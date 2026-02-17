@@ -69,6 +69,7 @@ ${OPTIONAL}[ optional ]
 	-P      A list of Fasta files, delimited by comma, used to do pre-genomic mapping and analysis. For example, given "-P miniwhite.fa,virus.fa", after removing reads mappable to rRNA and miRNA hairpin, reads are mapped to miniWhite sequence first. Only the non-miniWhite-mappers are mapped to virus sequence. And only the non-miniWhite, non-virus mappers will be used in the genome mapping and further analysis.
 	-O      A list of Fasta files, delimited by comma, used to do post-genomic mapping and analysis. For example, given "-O gfp.fa,luciferase.fa", after removing reads mappable rRNA, miRNA hairpin and genome, reads are mapped to gfp sequence first. Only the non-genome non-gfp mappers are mapped to luciferase sequence. If more than one sequences are put in one Fasta file, they will be treated equally. ${UNDERLINE}Please only use letters and numbers as filename and USE \$HOME instead of ~ to indicate the home directory.${RESET}${OPTIONAL}
 	-D      Delete large bed/bam files after pipeline finishes to save space (this step can also be ran separately), default: false
+	-S      Skip intersecting with genomic features step, default: false
 	
 EOF
 echo -e "${COLOR_END}"
@@ -77,7 +78,7 @@ echo -e "${COLOR_END}"
 #############################
 # ARGS reading and checking #
 #############################
-while getopts "hi:c:o:g:vN:F:P:O:D" OPTION; do
+while getopts "hi:c:o:g:vN:F:P:O:DS" OPTION; do
 	case $OPTION in
 		h)	usage && exit 0 ;;
 		i)	INPUT_FASTQ=`readlink -f "${OPTARG}"` ;;
@@ -90,6 +91,7 @@ while getopts "hi:c:o:g:vN:F:P:O:D" OPTION; do
 		P)	PRE_GENOME_MAPPING_FILE_LIST="${OPTARG}" ;;
 		O)	POST_GENOME_MAPPING_FILE_LIST="${OPTARG}" ;;
 		D)	CLEAN=1;;
+		S)	SKIP_INTERSECT=1;;
 		*)	usage && exit 1 ;;
 	esac
 done
@@ -710,15 +712,19 @@ echo $NormScale > .depth
 ####################################
 # Intersecting with GENOME Feature #
 ####################################
-echo2 "Intersecting with genomic features, make length distribution, nucleotide fraction for siRNA/piRNA assigned to each feature"
-[ ! -f .${JOBUID}.status.${STEP}.intersect_with_genomic_features ] && \
-bash $DEBUG piPipes_intersect_smallRNA_with_genomic_features.sh \
-	${GENOME_ALLMAP_BED2} \
-	$SUMMARY_DIR/`basename ${GENOME_ALLMAP_BED2%.bed2}` \
-	$CPU \
-	$INTERSECT_DIR \
-	1>&2 && \
-	touch .${JOBUID}.status.${STEP}.intersect_with_genomic_features
+if [[ "$SKIP_INTERSECT" != 1 ]]; then
+	echo2 "Intersecting with genomic features, make length distribution, nucleotide fraction for siRNA/piRNA assigned to each feature"
+	[ ! -f .${JOBUID}.status.${STEP}.intersect_with_genomic_features ] && \
+	bash $DEBUG piPipes_intersect_smallRNA_with_genomic_features.sh \
+		${GENOME_ALLMAP_BED2} \
+		$SUMMARY_DIR/`basename ${GENOME_ALLMAP_BED2%.bed2}` \
+		$CPU \
+		$INTERSECT_DIR \
+		1>&2 && \
+		touch .${JOBUID}.status.${STEP}.intersect_with_genomic_features
+else
+	echo2 "Skipping intersecting with genomic features (option -S was set)"
+fi
 STEP=$((STEP+1))
 
 #######################
