@@ -480,7 +480,8 @@ GENOME_UNIQUEMAP_BED2=$GENOMIC_MAPPING_DIR/${INSERT%.insert}.${GENOME}v${genome_
 GENOME_UNIQUEMAP_HAIRPIN_BED2=$GENOMIC_MAPPING_DIR/${INSERT%.insert}.${GENOME}v${genome_MM}.unique.+hairpin.bed2
 # mapping insert file to genome
 echo2 "Mapping to genome, with ${genome_MM} mismatch(es) allowed"
-[ ! -f .${JOBUID}.status.${STEP}.genome_mapping ] && \
+# First mapping: Generate bed2 files for downstream analysis
+[ ! -f .${JOBUID}.status.${STEP}.genome_mapping_bed2 ] && \
 	bowtie -r -v $genome_MM -a --best --strata -p $CPU \
 		--al  ${INPUT%.insert}.${GENOME}v${genome_MM}a.al.insert \
 		--un  ${INPUT%.insert}.${GENOME}v${genome_MM}a.un.insert \
@@ -488,14 +489,25 @@ echo2 "Mapping to genome, with ${genome_MM} mismatch(es) allowed"
 		genome \
 		${INPUT} \
 		2> $GENOME_ALLMAP_LOG | \
+	samtools view -bSF 0x4 - 2>/dev/null | \
+	bedtools_piPipes bamtobed -i - > ${INSERT%.insert}.${GENOME}v${genome_MM}a.insert.bed && \
+	piPipes_insertBed_to_bed2 $INPUT ${INSERT%.insert}.${GENOME}v${genome_MM}a.insert.bed > ${GENOME_ALLMAP_BED2} && \
+	rm -rf ${INSERT%.insert}.${GENOME}v${genome_MM}a.insert.bed && \
+	touch .${JOBUID}.status.${STEP}.genome_mapping_bed2
+[ ! -f .${JOBUID}.status.${STEP}.genome_mapping_bed2 ] && echo2 "Genome mapping (bed2 generation) failed" "error"
+
+# Second mapping: Generate sorted and indexed BAM file
+[ ! -f .${JOBUID}.status.${STEP}.genome_mapping_bam ] && \
+	bowtie -r -v $genome_MM -a --best --strata -p $CPU \
+		-S \
+		genome \
+		${INPUT} \
+		2>/dev/null | \
 	samtools view -uS -F0x4 - 2>/dev/null | \
 	samtools sort - -o ${GENOMIC_MAPPING_DIR}/${INSERT%.insert}.${GENOME}v${genome_MM}.all.bam && \
 	samtools index ${GENOMIC_MAPPING_DIR}/${INSERT%.insert}.${GENOME}v${genome_MM}.all.bam && \
-	bedtools_piPipes bamtobed -i ${GENOMIC_MAPPING_DIR}/${INSERT%.insert}.${GENOME}v${genome_MM}.all.bam > ${INSERT%.insert}.${GENOME}v${genome_MM}a.insert.bed && \
-	piPipes_insertBed_to_bed2 $INPUT ${INSERT%.insert}.${GENOME}v${genome_MM}a.insert.bed > ${GENOME_ALLMAP_BED2} && \
-	rm -rf ${INSERT%.insert}.${GENOME}v${genome_MM}a.insert.bed && \
-	touch .${JOBUID}.status.${STEP}.genome_mapping
-[ ! -f .${JOBUID}.status.${STEP}.genome_mapping ] && echo2 "Genome mapping failed" "error"
+	touch .${JOBUID}.status.${STEP}.genome_mapping_bam
+[ ! -f .${JOBUID}.status.${STEP}.genome_mapping_bam ] && echo2 "Genome mapping (BAM generation) failed" "error"
 STEP=$((STEP+1))
 
 # separating unique and multiple mappers
