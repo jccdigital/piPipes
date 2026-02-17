@@ -487,7 +487,9 @@ echo2 "Mapping to genome, with ${genome_MM} mismatch(es) allowed"
 		${INPUT} \
 		2> $GENOME_ALLMAP_LOG | \
 	samtools view -uS -F0x4 - 2>/dev/null | \
-	bedtools_piPipes bamtobed -i - > ${INSERT%.insert}.${GENOME}v${genome_MM}a.insert.bed && \
+	samtools sort - -o ${GENOMIC_MAPPING_DIR}/${INSERT%.insert}.${GENOME}v${genome_MM}.all.bam && \
+	samtools index ${GENOMIC_MAPPING_DIR}/${INSERT%.insert}.${GENOME}v${genome_MM}.all.bam && \
+	bedtools_piPipes bamtobed -i ${GENOMIC_MAPPING_DIR}/${INSERT%.insert}.${GENOME}v${genome_MM}.all.bam > ${INSERT%.insert}.${GENOME}v${genome_MM}a.insert.bed && \
 	piPipes_insertBed_to_bed2 $INPUT ${INSERT%.insert}.${GENOME}v${genome_MM}a.insert.bed > ${GENOME_ALLMAP_BED2} && \
 	rm -rf ${INSERT%.insert}.${GENOME}v${genome_MM}a.insert.bed && \
 	touch .${JOBUID}.status.${STEP}.genome_mapping
