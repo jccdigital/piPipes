@@ -466,6 +466,15 @@ MM=0 # haven't implement method to take mismatch # from user
 		rm -f $OUTDIR1/${TARGET_NAME}.1.ebwt $OUTDIR1/${TARGET_NAME}.2.ebwt $OUTDIR1/${TARGET_NAME}.3.ebwt $OUTDIR1/${TARGET_NAME}.4.ebwt $OUTDIR1/${TARGET_NAME}.rev.1.ebwt $OUTDIR1/${TARGET_NAME}.rev.2.ebwt $OUTDIR1/${TARGET_NAME}.sizes
 	done
 
+# Length filtering: keep reads between 23 and 35 bases
+echo2 "Filtering reads by length (23-35 bases)"
+[ ! -f .${JOBUID}.status.${STEP}.length_filter ] && \
+	awk 'BEGIN{FS=OFS="\t"} length($1) >= 23 && length($1) <= 35' ${INPUT} > ${INPUT%.insert}.len23-35.insert && \
+	touch .${JOBUID}.status.${STEP}.length_filter
+[ ! -f .${JOBUID}.status.${STEP}.length_filter ] && echo2 "length filtering failed" "error"
+INPUT=${INPUT%.insert}.len23-35.insert
+STEP=$((STEP+1))
+
 ##################
 # GENOME Mapping #
 ##################
