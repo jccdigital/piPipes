@@ -1,4 +1,3 @@
-
 # piPipes, a set of pipelines for PIWI-interacting RNA (piRNA) and transposon analysis
 # Copyright (C) 2014  Bo Han, Wei Wang, Zhiping Weng, Phillip Zamore
 #
@@ -466,15 +465,6 @@ MM=0 # haven't implement method to take mismatch # from user
 		rm -f $OUTDIR1/${TARGET_NAME}.1.ebwt $OUTDIR1/${TARGET_NAME}.2.ebwt $OUTDIR1/${TARGET_NAME}.3.ebwt $OUTDIR1/${TARGET_NAME}.4.ebwt $OUTDIR1/${TARGET_NAME}.rev.1.ebwt $OUTDIR1/${TARGET_NAME}.rev.2.ebwt $OUTDIR1/${TARGET_NAME}.sizes
 	done
 
-# Length filtering: keep reads between 23 and 35 bases
-echo2 "Filtering reads by length (23-35 bases)"
-[ ! -f .${JOBUID}.status.${STEP}.length_filter ] && \
-	awk 'BEGIN{FS=OFS="\t"} length($1) >= 23 && length($1) <= 35' ${INPUT} > ${INPUT%.insert}.len23-35.insert && \
-	touch .${JOBUID}.status.${STEP}.length_filter
-[ ! -f .${JOBUID}.status.${STEP}.length_filter ] && echo2 "length filtering failed" "error"
-INPUT=${INPUT%.insert}.len23-35.insert
-STEP=$((STEP+1))
-
 ##################
 # GENOME Mapping #
 ##################
@@ -487,9 +477,10 @@ GENOME_ALLMAP_LOG=$GENOMIC_MAPPING_DIR/${INSERT%.insert}.${GENOME}v${genome_MM}.
 GENOME_UNIQUEMAP_BED2=$GENOMIC_MAPPING_DIR/${INSERT%.insert}.${GENOME}v${genome_MM}.unique.bed2
 # bed2 format storing unique mappers for genomic mapping and miRNA hairpin mapper
 GENOME_UNIQUEMAP_HAIRPIN_BED2=$GENOMIC_MAPPING_DIR/${INSERT%.insert}.${GENOME}v${genome_MM}.unique.+hairpin.bed2
-# mapping insert file to genome
+
 echo2 "Mapping to genome, with ${genome_MM} mismatch(es) allowed"
-# First mapping: Generate bed2 files for downstream analysis
+
+# First mapping: Generate bed2 files for downstream pipeline (Using FULL UNFILTERED DATA)
 [ ! -f .${JOBUID}.status.${STEP}.genome_mapping_bed2 ] && \
 	bowtie -r -v $genome_MM -a --best --strata -p $CPU \
 		--al  ${INPUT%.insert}.${GENOME}v${genome_MM}a.al.insert \
@@ -505,16 +496,20 @@ echo2 "Mapping to genome, with ${genome_MM} mismatch(es) allowed"
 	touch .${JOBUID}.status.${STEP}.genome_mapping_bed2
 [ ! -f .${JOBUID}.status.${STEP}.genome_mapping_bed2 ] && echo2 "Genome mapping (bed2 generation) failed" "error"
 
-# Second mapping: Generate sorted and indexed BAM file
+# Second mapping: Generate custom size-selected (23-35nt) BAM file
+echo2 "Generating custom size-selected (23-35nt) BAM file for genome mapping"
+SIZE_SEL_INSERT=${INPUT%.insert}.len23-35.insert
+
 [ ! -f .${JOBUID}.status.${STEP}.genome_mapping_bam ] && \
+	awk 'BEGIN{FS=OFS="\t"} length($1) >= 23 && length($1) <= 35' ${INPUT} > ${SIZE_SEL_INSERT} && \
 	bowtie -r -v $genome_MM -a --best --strata -p $CPU \
 		-S \
 		genome \
-		${INPUT} \
-		2> ${GENOMIC_MAPPING_DIR}/${INSERT%.insert}.${GENOME}v${genome_MM}.bowtie.log | \
-	samtools view -uS -F0x4 - 2> ${GENOMIC_MAPPING_DIR}/${INSERT%.insert}.${GENOME}v${genome_MM}.view.log | \
-	samtools sort - ${GENOMIC_MAPPING_DIR}/${INSERT%.insert}.${GENOME}v${genome_MM}.all 2> ${GENOMIC_MAPPING_DIR}/${INSERT%.insert}.${GENOME}v${genome_MM}.sort.log && \
-	samtools index ${GENOMIC_MAPPING_DIR}/${INSERT%.insert}.${GENOME}v${genome_MM}.all.bam && \
+		${SIZE_SEL_INSERT} \
+		2> ${GENOMIC_MAPPING_DIR}/${INSERT%.insert}.len23-35.${GENOME}v${genome_MM}.bowtie.log | \
+	samtools view -uS -F0x4 - 2> ${GENOMIC_MAPPING_DIR}/${INSERT%.insert}.len23-35.${GENOME}v${genome_MM}.view.log | \
+	samtools sort - ${GENOMIC_MAPPING_DIR}/${INSERT%.insert}.len23-35.${GENOME}v${genome_MM}.all 2> ${GENOMIC_MAPPING_DIR}/${INSERT%.insert}.len23-35.${GENOME}v${genome_MM}.sort.log && \
+	samtools index ${GENOMIC_MAPPING_DIR}/${INSERT%.insert}.len23-35.${GENOME}v${genome_MM}.all.bam && \
 	touch .${JOBUID}.status.${STEP}.genome_mapping_bam
 [ ! -f .${JOBUID}.status.${STEP}.genome_mapping_bam ] && echo2 "Genome mapping (BAM generation) failed" "error"
 STEP=$((STEP+1))
