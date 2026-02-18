@@ -513,7 +513,7 @@ echo2 "Mapping to genome, with ${genome_MM} mismatch(es) allowed"
 		${INPUT} \
 		2> ${GENOMIC_MAPPING_DIR}/${INSERT%.insert}.${GENOME}v${genome_MM}.bowtie.log | \
 	samtools view -uS -F0x4 - 2> ${GENOMIC_MAPPING_DIR}/${INSERT%.insert}.${GENOME}v${genome_MM}.view.log | \
-	samtools sort - ${GENOMIC_MAPPING_DIR}/${INSERT%.insert}.${GENOME}v${genome_MM}.all.bam 2> ${GENOMIC_MAPPING_DIR}/${INSERT%.insert}.${GENOME}v${genome_MM}.sort.log && \
+	samtools sort - ${GENOMIC_MAPPING_DIR}/${INSERT%.insert}.${GENOME}v${genome_MM}.all 2> ${GENOMIC_MAPPING_DIR}/${INSERT%.insert}.${GENOME}v${genome_MM}.sort.log && \
 	samtools index ${GENOMIC_MAPPING_DIR}/${INSERT%.insert}.${GENOME}v${genome_MM}.all.bam && \
 	touch .${JOBUID}.status.${STEP}.genome_mapping_bam
 [ ! -f .${JOBUID}.status.${STEP}.genome_mapping_bam ] && echo2 "Genome mapping (BAM generation) failed" "error"
